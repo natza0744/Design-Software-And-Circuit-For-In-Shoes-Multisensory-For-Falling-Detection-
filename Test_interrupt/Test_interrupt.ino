@@ -5,7 +5,7 @@
 #include "CurieTimerOne.h"
 
 // Comment the following statement to disable logging on serial port.
-#define SERIAL_PORT_LOG_ENABLE 1
+//#define SERIAL_PORT_LOG_ENABLE 1
 
 //BLEPeripheral blePeripheral;
 
@@ -22,9 +22,9 @@ typedef struct accelerometer
 	float AxStore;  
 	float AyStore;
 	float AzStore;
-	float AxSend[9];
-	float AySend[9];	
-	float AzSend[9];
+	float AxSend[];
+	float AySend[];	
+	float AzSend[];
 
 }Accelerometer;
 
@@ -38,7 +38,7 @@ typedef struct Gyroscope
 
 //float axRaw, ayRaw, azRaw;
 int i = 0; // Count Element In Array 
-const int time = 100000;
+int time = 100000;
 Accelerometer Acc;
 
 //Accelerometer *aSend = Acc;
@@ -47,12 +47,10 @@ Accelerometer Acc;
 
 void setup()
 {
-	#ifdef SERIAL_PORT_LOG_ENABLE
 		Serial.begin(9600);
 		while(!Serial){
 		    // Wainting for the serial port open
 		}
-	#endif
 
 	BLE.begin();
 
@@ -64,10 +62,7 @@ void setup()
 
 	//BLE.setAdvertiseService("footService");
 	BLE.setAdvertisedServiceUuid(footService.uuid());
-//	BLE.addAttribute(footService);
-// 	BLE.addAttribute(footCharAx);
-//  	BLE.addAttribute(footCharAy);
-//  	BLE.addAttribute(footCharAz);
+
 	//Add the characteristic to the service
 	footService.addCharacteristic(footCharAx);
 	footService.addCharacteristic(footCharAy);
@@ -83,51 +78,35 @@ void setup()
 
 void loop()
 {
-	BLEDevice central = BLE.central();
 
 	//start interrupt here
 	//readTickCount is count round to call interrupt
-	//CurieTimerOne.start(time, &UpdateSensor);
-	//Serial.println(CurieTimerOne.readTickCount());
+	CurieTimerOne.start(time, &UpdateSensor);
 	//End of interrupt
-  if (central) {
-    Serial.print("Connected to central: ");
-    // print the central's MAC address:
-    Serial.println(central.address());
 
-    // while the central is still connected to peripheral:
-    while (central.connected()) {
-	      UpdateSensor();
-      }
+    //Send data
+	footCharAx.setValue(Acc.AxSend[i]);
+	footCharAy.setValue(Acc.AySend[i]);
+	footCharAz.setValue(Acc.AzSend[i]);
+//  footCharAx.setValue(Acc.AxStore);
+//  footCharAy.setValue(Acc.AyStore);
+//  footCharAz.setValue(Acc.AzStore);
+  	
+  	
 
-  }
+	delay(1000);  //1 seconds of delay, regularly 'interrupted' by the timer interrupt
 
-	//Copy data to A...Send[] cause sensor need A...Store[]  to store data
-//	Acc.AxSend[CurieTimerOne.readTickCount()] = Acc.AxStore[CurieTimerOne.readTickCount()];
-//	Acc.AySend[CurieTimerOne.readTickCount()] = Acc.AyStore[CurieTimerOne.readTickCount()];
-//	Acc.AzSend[CurieTimerOne.readTickCount()] = Acc.AzStore[CurieTimerOne.readTickCount()];
-//	 #ifdef SERIAL_PORT_LOG_ENABLE
-//	 	Serial.println(Acc.AxSend[CurieTimerOne.readTickCount()]);
-//	 	Serial.println(Acc.AySend[CurieTimerOne.readTickCount()]);
-//	 	Serial.print(Acc.AzSend[CurieTimerOne.readTickCount()]);
-//	 #endif
-	//Send data
-//	footCharAx.setValue(Acc.AxSend[CurieTimerOne.readTickCount()]);
-//	footCharAy.setValue(Acc.AySend[CurieTimerOne.readTickCount()]);
-//	footCharAz.setValue(Acc.AzSend[CurieTimerOne.readTickCount()]);
-  // footCharAx.setValue(Acc.AxStore[CurieTimerOne.readTickCount()]);
-  // footCharAy.setValue(Acc.AyStore[CurieTimerOne.readTickCount()]);
-  // footCharAz.setValue(Acc.AzStore[CurieTimerOne.readTickCount()]);
-	
-	
-
+	//reset Tick count
+  Serial.print("Count: ");
+	Serial.println(CurieTimerOne.rdRstTickCount());
+  Serial.print("SizeofArray: ");
+  Serial.println(sizeof(Acc.AxSend));
 }
 
 void UpdateSensor()
 {
-//	if(CurieTimerOne.readTickCount() == 11){
-//		CurieTimerOne.rdRstTickCount();
-//	}
+	i = CurieTimerOne.readTickCount();
+  Serial.println(i);
 
 	// CurieIMU.readAccelerometerScaled(aStore->AxStore[i-1], aStore->AyStore[i-1], aStore->AzStore[i-1]);
 	// #ifdef SERIAL_PORT_LOG_ENABLE
@@ -139,31 +118,35 @@ void UpdateSensor()
 	// 	Serial.println(aStore->AzStore[i-1]);
 	// #endif
 
-//	CurieIMU.readAccelerometerScaled(Acc.AxStore[CurieTimerOne.readTickCount()-1], 
-//	                                 Acc.AyStore[CurieTimerOne.readTickCount()-1], 
-//	                                 Acc.AzStore[CurieTimerOne.readTickCount()-1]);
+
 CurieIMU.readAccelerometerScaled(Acc.AxStore, 
-                                   Acc.AyStore, 
-                                   Acc.AzStore);
+                                 Acc.AyStore, 
+                                 Acc.AzStore);
 
 	//#ifdef SERIAL_PORT_LOG_ENABLE
 		Serial.print("X:");
 		Serial.print(Acc.AxStore);
     Serial.print("\t");
-		//Acc.AxStore[i-1] = axRaw; //Copy value to A...Store[]
+
 		
 		Serial.print("Y:");
 		Serial.print(Acc.AyStore);
     Serial.print("\t");
-		//Acc.AyStore[i-1] = ayRaw;
+	
 		
 		Serial.print("Z:");
 		Serial.println(Acc.AzStore);
-		//Acc.AzStore[i-1] = azRaw;
-	//#endif
-  footCharAx.setValue(Acc.AxStore);
-  footCharAy.setValue(Acc.AyStore);
-  footCharAz.setValue(Acc.AzStore);
+
+		//Copy data to A...Send[] cause sensor need A...Store to store data
+		 Acc.AxSend[i] = Acc.AxStore;
+		 Acc.AySend[i] = Acc.AyStore;
+		 Acc.AzSend[i] = Acc.AzStore;
+
+    
+
+		
+	
+ 
 
 }
 
